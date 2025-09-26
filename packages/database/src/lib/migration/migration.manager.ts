@@ -460,10 +460,20 @@ export class ${className} extends Migration {
       // 由于 MikroORM 的迁移生成比较复杂，这里提供基础模板
       return this.generateEmptyMigrationTemplate(className);
     } catch (error) {
-      this.logger.warn('无法从实体生成迁移，使用空模板', {
+      this.logger.error('无法从实体生成迁移', {
         error: error instanceof Error ? error.message : String(error)
       });
-      return this.generateEmptyMigrationTemplate(className);
+      
+      // 无法从实体生成迁移时抛出异常，而不是静默降级
+      throw new DatabaseMigrationException(
+        '无法从实体生成迁移',
+        `从实体生成迁移时发生错误: ${error instanceof Error ? error.message : String(error)}`,
+        {
+          originalError: error instanceof Error ? error.message : String(error),
+          operation: 'generateFromEntities',
+          className
+        }
+      );
     }
   }
 }

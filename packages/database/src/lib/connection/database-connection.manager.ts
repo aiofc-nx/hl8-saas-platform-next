@@ -152,6 +152,18 @@ export class DatabaseConnectionManager implements OnModuleInit, OnModuleDestroy 
       this.logger.error('关闭数据库连接时发生错误', {
         error: error instanceof Error ? error.message : String(error)
       });
+      
+      // 在关键错误时抛出异常，确保上层能够感知到关闭失败
+      throw new DatabaseConnectionException(
+        '数据库连接关闭失败',
+        `关闭数据库连接时发生错误: ${error instanceof Error ? error.message : String(error)}`,
+        {
+          originalError: error instanceof Error ? error.message : String(error),
+          database: this.config.database,
+          type: this.config.type,
+          operation: 'close'
+        }
+      );
     }
   }
 
@@ -346,7 +358,15 @@ export class DatabaseConnectionManager implements OnModuleInit, OnModuleDestroy 
       } catch (error) {
         this.logger.error('健康检查失败', {
           error: error instanceof Error ? error.message : String(error),
-          database: this.config.database
+          database: this.config.database,
+          type: this.config.type
+        });
+        
+        // 健康检查失败时记录详细错误信息，但不抛出异常
+        // 因为这是后台任务，不应该中断应用运行
+        this.logger.warn('数据库健康检查持续失败，请检查数据库连接状态', {
+          database: this.config.database,
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }, 30000); // 30 秒检查一次
