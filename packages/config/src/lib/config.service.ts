@@ -1,6 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { getConfig } from './config-loader.js';
+import { getConfig, validateCurrentConfig, validatePartialConfig, getValidationRules } from './config-loader.js';
 import { PinoLogger } from '@hl8/logger';
+import { ValidationResult, ValidationRules } from './validation/config-validation.service.js';
+
+/**
+ * 配置健康状态接口
+ *
+ * @description 配置健康检查结果的类型定义
+ * 包含健康状态、问题列表和时间戳等信息
+ */
+export interface ConfigHealthStatus {
+  /** 配置是否健康 */
+  isHealthy: boolean;
+  /** 配置问题列表 */
+  issues: string[];
+  /** 检查时间戳 */
+  timestamp: string;
+  /** 配置版本 */
+  configVersion: string;
+}
 
 /**
  * 配置服务
@@ -391,5 +409,172 @@ export class ConfigService {
    */
   getAll() {
     return this.config;
+  }
+
+  /**
+   * 验证当前配置
+   *
+   * @description 验证当前应用程序配置是否符合业务规则
+   * 提供配置验证功能，用于检查配置的完整性和正确性
+   * 
+   * ## 验证内容
+   * - 数据类型验证
+   * - 业务规则验证
+   * - 必需字段检查
+   * - 格式和范围验证
+   * 
+   * @param {boolean} throwOnError - 验证失败时是否抛出错误，默认为false
+   * @returns {Promise<ValidationResult>} 验证结果
+   * 
+   * @example
+   * ```typescript
+   * // 验证当前配置
+   * const result = await this.configService.validateConfig();
+   * if (!result.isValid) {
+   *   console.error('配置验证失败:', result.errors);
+   * }
+   * 
+   * // 验证并抛出错误
+   * await this.configService.validateConfig(true);
+   * ```
+   * 
+   * @since 1.0.0
+   */
+  async validateConfig(throwOnError: boolean = false): Promise<ValidationResult> {
+    return await validateCurrentConfig(throwOnError);
+  }
+
+  /**
+   * 验证部分配置
+   *
+   * @description 验证配置对象的特定部分
+   * 支持增量配置验证，适用于配置更新场景
+   * 
+   * @param {any} partialConfig - 要验证的部分配置
+   * @param {string[]} fields - 要验证的字段列表
+   * @returns {Promise<ValidationResult>} 验证结果
+   * 
+   * @example
+   * ```typescript
+   * // 验证API配置
+   * const result = await this.configService.validatePartialConfig(
+   *   { api: { port: 3000 } }, 
+   *   ['api']
+   * );
+   * ```
+   * 
+   * @since 1.0.0
+   */
+  async validatePartialConfig(partialConfig: any, fields: string[]): Promise<ValidationResult> {
+    return await validatePartialConfig(partialConfig, fields);
+  }
+
+  /**
+   * 获取配置验证规则
+   *
+   * @description 获取配置验证规则的详细说明
+   * 用于生成配置文档和错误提示
+   * 
+   * @returns {ValidationRules} 验证规则说明
+   * 
+   * @example
+   * ```typescript
+   * const rules = this.configService.getValidationRules();
+   * console.log(rules.api.port.description);
+   * ```
+   * 
+   * @since 1.0.0
+   */
+  getValidationRules(): ValidationRules {
+    return getValidationRules();
+  }
+
+  /**
+   * 检查配置健康状态
+   *
+   * @description 检查配置的健康状态，包括验证和基本检查
+   * 提供配置状态的全面检查，确保配置可用性
+   * 
+   * ## 检查内容
+   * - 配置验证检查
+   * - 必需配置项检查
+   * - 配置值合理性检查
+   * - 环境配置一致性检查
+   * 
+   * @returns {Promise<ConfigHealthStatus>} 配置健康状态
+   * 
+   * @example
+   * ```typescript
+   * const health = await this.configService.checkConfigHealth();
+   * if (health.isHealthy) {
+   *   console.log('配置状态良好');
+   * } else {
+   *   console.error('配置问题:', health.issues);
+   * }
+   * ```
+   * 
+   * @since 1.0.0
+   */
+  async checkConfigHealth(): Promise<ConfigHealthStatus> {
+    const issues: string[] = [];
+    let isHealthy = true;
+
+    try {
+      // 验证配置
+      const validationResult = await this.validateConfig();
+      if (!validationResult.isValid) {
+        isHealthy = false;
+        validationResult.errors.forEach(error => {
+          issues.push(`${error.property}: ${Object.values(error.constraints).join(', ')}`);
+        });
+      }
+
+      // 检查关键配置项
+      const criticalConfigs = [
+        { path: 'api.port', name: 'API端口' },
+        { path: 'database.type', name: '数据库类型' },
+        { path: 'auth.jwtSecret', name: 'JWT密钥' }
+      ];
+
+      for (const config of criticalConfigs) {
+        const value = this.get(config.path);
+        if (!value) {
+          isHealthy = false;
+          issues.push(`缺少关键配置: ${config.name} (${config.path})`);
+        }
+      }
+
+      // 检查端口号范围
+      const apiPort = this.get<number>('api.port');
+      if (apiPort && (apiPort < 1 || apiPort > 65535)) {
+        isHealthy = false;
+        issues.push(`API端口号超出有效范围: ${apiPort}`);
+      }
+
+      // 检查数据库类型
+      const dbType = this.get<string>('database.type');
+      const validDbTypes = ['postgresql', 'mysql', 'sqlite', 'mongodb'];
+      if (dbType && !validDbTypes.includes(dbType)) {
+        isHealthy = false;
+        issues.push(`不支持的数据库类型: ${dbType}`);
+      }
+
+      return {
+        isHealthy,
+        issues,
+        timestamp: new Date().toISOString(),
+        configVersion: '1.0.0'
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('配置健康检查失败', { error: errorMessage });
+      return {
+        isHealthy: false,
+        issues: [`配置健康检查失败: ${errorMessage}`],
+        timestamp: new Date().toISOString(),
+        configVersion: '1.0.0'
+      };
+    }
   }
 }
