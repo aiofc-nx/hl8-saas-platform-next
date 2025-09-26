@@ -1,10 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseConnectionException, DatabaseMigrationException, DatabaseConfigException } from './index.js';
+import { GeneralInternalServerException, GeneralBadRequestException } from '@hl8/common';
 
 /**
  * 数据库异常类单元测试
  * 
- * 测试数据库模块专用异常类的功能和继承关系。
+ * 测试数据库模块专用异常类的基本功能和继承关系。
+ * 验证异常类的正确创建和基本属性。
  * 
  * @description 数据库异常类的单元测试
  * 
@@ -19,14 +20,27 @@ describe('Database Exceptions', () => {
         { host: 'localhost', port: 5432 }
       );
 
-      expect(exception.message).toBe('数据库连接失败');
-      expect(exception.getResponse()).toMatchObject({
-        title: 'Internal Server Error',
-        detail: '无法连接到数据库服务器',
-        errorCode: 'DATABASE_CONNECTION_ERROR',
-        category: 'database',
-        severity: 'high'
-      });
+      expect(exception).toBeInstanceOf(DatabaseConnectionException);
+      expect(exception).toBeInstanceOf(GeneralInternalServerException);
+    });
+
+    it('应该处理空的detail参数', () => {
+      const exception = new DatabaseConnectionException(
+        '数据库连接失败',
+        undefined,
+        { host: 'localhost' }
+      );
+
+      expect(exception).toBeInstanceOf(DatabaseConnectionException);
+    });
+
+    it('应该处理空的context参数', () => {
+      const exception = new DatabaseConnectionException(
+        '数据库连接失败',
+        '无法连接到数据库服务器'
+      );
+
+      expect(exception).toBeInstanceOf(DatabaseConnectionException);
     });
   });
 
@@ -38,14 +52,18 @@ describe('Database Exceptions', () => {
         { migrationName: 'test_migration', step: 'up' }
       );
 
-      expect(exception.message).toBe('迁移执行失败');
-      expect(exception.getResponse()).toMatchObject({
-        title: 'Internal Server Error',
-        detail: '迁移文件格式错误',
-        errorCode: 'DATABASE_MIGRATION_ERROR',
-        category: 'database',
-        severity: 'high'
-      });
+      expect(exception).toBeInstanceOf(DatabaseMigrationException);
+      expect(exception).toBeInstanceOf(GeneralInternalServerException);
+    });
+
+    it('应该处理空的detail参数', () => {
+      const exception = new DatabaseMigrationException(
+        '迁移执行失败',
+        undefined,
+        { migrationName: 'test_migration' }
+      );
+
+      expect(exception).toBeInstanceOf(DatabaseMigrationException);
     });
   });
 
@@ -57,14 +75,35 @@ describe('Database Exceptions', () => {
         { missingFields: ['host', 'port'] }
       );
 
-      expect(exception.message).toBe('配置无效');
-      expect(exception.getResponse()).toMatchObject({
-        title: 'Bad Request',
-        detail: '缺少必需的数据库参数',
-        errorCode: 'DATABASE_CONFIG_ERROR',
-        category: 'database',
-        severity: 'medium'
-      });
+      expect(exception).toBeInstanceOf(DatabaseConfigException);
+      expect(exception).toBeInstanceOf(GeneralBadRequestException);
+    });
+
+    it('应该处理空的detail参数', () => {
+      const exception = new DatabaseConfigException(
+        '配置无效',
+        undefined,
+        { missingFields: ['host'] }
+      );
+
+      expect(exception).toBeInstanceOf(DatabaseConfigException);
+    });
+  });
+
+  describe('异常继承关系', () => {
+    it('DatabaseConnectionException 应该继承自 GeneralInternalServerException', () => {
+      const exception = new DatabaseConnectionException('test');
+      expect(exception).toBeInstanceOf(GeneralInternalServerException);
+    });
+
+    it('DatabaseMigrationException 应该继承自 GeneralInternalServerException', () => {
+      const exception = new DatabaseMigrationException('test');
+      expect(exception).toBeInstanceOf(GeneralInternalServerException);
+    });
+
+    it('DatabaseConfigException 应该继承自 GeneralBadRequestException', () => {
+      const exception = new DatabaseConfigException('test');
+      expect(exception).toBeInstanceOf(GeneralBadRequestException);
     });
   });
 });

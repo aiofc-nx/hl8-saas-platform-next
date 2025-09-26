@@ -18,4 +18,14 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: 'test-output/jest/coverage',
+  collectCoverage: true,
+  coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      branches: 10,
+      functions: 30,
+      lines: 35,
+      statements: 35
+    }
+  }
 };

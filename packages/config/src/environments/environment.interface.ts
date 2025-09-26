@@ -1,3 +1,5 @@
+import type { LogLevel } from '@hl8/logger';
+
 /**
  * 环境配置接口定义
  *
@@ -23,24 +25,12 @@
  */
 
 /**
- * 日志级别枚举
+ * 日志级别类型
  *
- * @description 定义支持的日志级别
+ * @description 使用 logger 模块的 LogLevel 类型，保持模块间的一致性
+ * 支持 trace、debug、info、warn、error、fatal 六个级别
  */
-export enum LogLevel {
-  /** 跟踪级别 - 最详细的日志信息 */
-  TRACE = 'trace',
-  /** 调试级别 - 调试信息 */
-  DEBUG = 'debug',
-  /** 信息级别 - 一般信息 */
-  INFO = 'info',
-  /** 警告级别 - 警告信息 */
-  WARN = 'warn',
-  /** 错误级别 - 错误信息 */
-  ERROR = 'error',
-  /** 致命级别 - 致命错误信息 */
-  FATAL = 'fatal'
-}
+export type { LogLevel } from '@hl8/logger';
 
 /**
  * 环境类型枚举

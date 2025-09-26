@@ -4,10 +4,13 @@
   "include": [],
   "references": [
     {
-      "path": "../common"
+      "path": "../config/tsconfig.lib.json"
     },
     {
-      "path": "../logger"
+      "path": "../common/tsconfig.lib.json"
+    },
+    {
+      "path": "../logger/tsconfig.lib.json"
     },
     {
       "path": "./tsconfig.lib.json"

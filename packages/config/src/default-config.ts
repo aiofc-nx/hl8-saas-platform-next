@@ -2,7 +2,6 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import * as path from 'path';
-import { dbMikroOrmConnectionConfig } from './database.js';
 import { PinoLogger } from '@hl8/logger';
 
 /**
@@ -91,7 +90,10 @@ class ApplicationConfigService {
     this.logger.log(`资源路径: ${this.assetPath}`);
     this.logger.log(`公共路径: ${this.assetPublicPath}`);
     this.logger.log(`API端口: ${process.env.API_PORT || 3000}`);
-    this.logger.log(`数据库类型: ${process.env.DB_TYPE || 'postgres'}`);
+    this.logger.log(`数据库类型: ${process.env.DB_TYPE || 'postgresql'}`);
+    this.logger.log(`数据库名称: ${process.env.DB_NAME || 'aiofix_platform'}`);
+    this.logger.log(`MongoDB名称: ${process.env.MONGO_NAME || 'aiofix_events'}`);
+    this.logger.log(`Redis主机: ${process.env.REDIS_HOST || 'localhost'}`);
     this.logger.log('==================');
   }
 
@@ -101,7 +103,7 @@ class ApplicationConfigService {
    * @description 返回应用程序的默认配置对象
    * @returns {Object} 默认配置对象
    */
-  getDefaultConfiguration() {
+  getDefaultConfiguration(): any {
     return {
       // API配置
       api: {
@@ -115,7 +117,38 @@ class ApplicationConfigService {
 
       // 数据库配置
       database: {
-        mikroOrm: dbMikroOrmConnectionConfig,
+        type: process.env.DB_TYPE || 'postgresql',
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        name: process.env.DB_NAME || 'aiofix_platform',
+        username: process.env.DB_USER || 'aiofix_user',
+        password: process.env.DB_PASS || 'aiofix_password',
+        sslMode: process.env.DB_SSL_MODE === 'true',
+        logging: process.env.DB_LOGGING || 'false',
+        poolSize: parseInt(process.env.DB_POOL_SIZE || '40'),
+        connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '5000'),
+        idleTimeout: parseInt(process.env.DB_IDLE_TIMEOUT || '10000'),
+      },
+
+      // MongoDB 配置
+      mongodb: {
+        host: process.env.MONGO_HOST || 'localhost',
+        port: parseInt(process.env.MONGO_PORT || '27017'),
+        name: process.env.MONGO_NAME || 'aiofix_events',
+        username: process.env.MONGO_USER || 'aiofix_admin',
+        password: process.env.MONGO_PASS || 'aiofix_password',
+        sslMode: process.env.MONGO_SSL_MODE === 'true',
+        logging: process.env.MONGO_LOGGING || 'false',
+      },
+
+      // Redis 配置
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD || '',
+        db: parseInt(process.env.REDIS_DB || '0'),
+        maxRetriesPerRequest: parseInt(process.env.REDIS_MAX_RETRIES || '3'),
+        retryDelayOnFailover: parseInt(process.env.REDIS_RETRY_DELAY || '100'),
       },
 
       // 认证配置

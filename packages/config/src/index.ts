@@ -7,10 +7,6 @@ export * from './lib/config.service.js';
 export * from './config/app.js';
 export * from './config/setting.js';
 
-// 数据库配置
-export * from './database-helpers.js';
-export * from './database.js';
-
 // 默认配置
 export * from './default-config.js';
 

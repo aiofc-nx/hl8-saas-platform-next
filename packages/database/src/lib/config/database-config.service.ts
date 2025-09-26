@@ -9,12 +9,10 @@ import {
   MongoDriver,
   Options as MikroOrmMongoOptions,
 } from '@mikro-orm/mongodb';
-import {
-  DatabaseTypeEnum,
-  getLoggingMikroOptions,
-  getTlsOptions,
-} from './database-helpers.js';
+import { DatabaseTypeEnum } from '../types/database-type.enum.js';
+import { getLoggingMikroOptions, getTlsOptions } from './database-config.helpers.js';
 import { PinoLogger } from '@hl8/logger';
+import { defaultConfiguration } from '@hl8/config';
 
 /**
  * 数据库配置服务
@@ -38,7 +36,7 @@ import { PinoLogger } from '@hl8/logger';
  * ## 环境变量
  *
  * ### 必需变量
- * - `DB_TYPE`: 数据库类型 (postgres | mongodb)
+ * - `DB_TYPE`: 数据库类型 (postgresql | mongodb)
  * - `DB_HOST`: 数据库主机地址
  * - `DB_PORT`: 数据库端口
  * - `DB_NAME`: 数据库名称
@@ -62,8 +60,10 @@ import { PinoLogger } from '@hl8/logger';
  * process.env.DB_TYPE = 'mongodb';
  * const mongoConfig = getMikroOrmConfig();
  * ```
+ *
+ * @since 1.0.0
  */
-class DatabaseConfigService {
+export class DatabaseConfigService {
   private readonly logger = new PinoLogger({
     level: 'info',
     destination: { type: 'console' }
@@ -75,17 +75,12 @@ class DatabaseConfigService {
   private readonly dbSslMode: boolean;
 
   constructor() {
-    this.dbType = process.env.DB_TYPE || DatabaseTypeEnum.postgres;
-    this.dbPoolSize = process.env.DB_POOL_SIZE
-      ? parseInt(process.env.DB_POOL_SIZE)
-      : 40;
-    this.dbConnectionTimeout = process.env.DB_CONNECTION_TIMEOUT
-      ? parseInt(process.env.DB_CONNECTION_TIMEOUT)
-      : 5000;
-    this.dbIdleTimeout = process.env.DB_IDLE_TIMEOUT
-      ? parseInt(process.env.DB_IDLE_TIMEOUT)
-      : 10000;
-    this.dbSslMode = process.env.DB_SSL_MODE === 'true';
+    const dbConfig = defaultConfiguration.database;
+    this.dbType = dbConfig.type;
+    this.dbPoolSize = dbConfig.poolSize;
+    this.dbConnectionTimeout = dbConfig.connectionTimeout;
+    this.dbIdleTimeout = dbConfig.idleTimeout;
+    this.dbSslMode = dbConfig.sslMode;
 
     this.logConfiguration();
   }
@@ -94,6 +89,13 @@ class DatabaseConfigService {
    * 记录配置信息
    *
    * @description 在开发环境中记录数据库配置信息，便于调试
+   * 
+   * ## 记录信息
+   * - Node.js版本
+   * - 数据库类型
+   * - 连接池配置
+   * - 超时设置
+   * - SSL配置
    */
   private logConfiguration(): void {
     this.logger.log(`Node.js版本: ${process.version}`);
@@ -110,37 +112,45 @@ class DatabaseConfigService {
    * @description 配置PostgreSQL数据库连接参数
    * 包括连接池、SSL、日志等设置
    *
+   * ## 配置特性
+   * - 支持SSL/TLS连接
+   * - 可配置连接池大小
+   * - 支持软删除扩展
+   * - 统一的命名策略
+   * - 可配置的日志级别
+   *
    * @returns {MikroOrmPostgreSqlOptions} PostgreSQL数据库配置选项
    */
   private getPostgresConfig(): MikroOrmPostgreSqlOptions {
     const tlsOptions = getTlsOptions(this.dbSslMode);
+    const dbConfig = defaultConfiguration.database;
 
     return {
-			driver: PostgreSqlDriver,
-			host: process.env.DB_HOST || 'localhost',
-			port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
-			dbName: process.env.DB_NAME || 'postgres',
-			user: process.env.DB_USER || 'postgres',
-			password: process.env.DB_PASS || 'root',
-			migrations: {
+      driver: PostgreSqlDriver,
+      host: dbConfig.host,
+      port: dbConfig.port,
+      dbName: dbConfig.name,
+      user: dbConfig.username,
+      password: dbConfig.password,
+      migrations: {
         path: 'src/modules/not-exists/*.migration{.ts,.js}',
-			},
-			entities: ['src/modules/not-exists/*.entity{.ts,.js}'],
-			driverOptions: {
-				connection: {
+      },
+      entities: ['src/modules/not-exists/*.entity{.ts,.js}'],
+      driverOptions: {
+        connection: {
           ssl: tlsOptions,
         },
-			},
-			pool: {
-				min: 0,
+      },
+      pool: {
+        min: 0,
         max: this.dbPoolSize,
         idleTimeoutMillis: this.dbIdleTimeout,
         acquireTimeoutMillis: this.dbConnectionTimeout,
-			},
-			persistOnCreate: true,
-			extensions: [SoftDeleteHandler],
-			namingStrategy: EntityCaseNamingStrategy,
-      debug: getLoggingMikroOptions(process.env.DB_LOGGING || 'false'),
+      },
+      persistOnCreate: true,
+      extensions: [SoftDeleteHandler],
+      namingStrategy: EntityCaseNamingStrategy,
+      debug: getLoggingMikroOptions(defaultConfiguration.database.logging),
     };
   }
 
@@ -150,14 +160,22 @@ class DatabaseConfigService {
    * @description 配置MongoDB数据库连接参数
    * 包括连接字符串、数据库名称、日志等设置
    *
+   * ## 配置特性
+   * - 支持连接字符串配置
+   * - 支持用户名密码认证
+   * - 支持软删除扩展
+   * - 统一的命名策略
+   * - 可配置的日志级别
+   *
    * @returns {MikroOrmMongoOptions} MongoDB数据库配置选项
    */
   private getMongoConfig(): MikroOrmMongoOptions {
-    const host = process.env.DB_HOST || 'localhost';
-    const port = process.env.DB_PORT || '27017';
-    const dbName = process.env.DB_NAME || 'gauzy';
-    const user = process.env.DB_USER;
-    const password = process.env.DB_PASS;
+    const dbConfig = defaultConfiguration.database;
+    const host = dbConfig.host;
+    const port = dbConfig.port.toString();
+    const dbName = dbConfig.name;
+    const user = dbConfig.username;
+    const password = dbConfig.password;
 
     // 构建MongoDB连接字符串
     let connectionString = `mongodb://${host}:${port}/${dbName}`;
@@ -175,10 +193,10 @@ class DatabaseConfigService {
         path: 'src/modules/not-exists/*.migration{.ts,.js}',
       },
       entities: ['src/modules/not-exists/*.entity{.ts,.js}'],
-			persistOnCreate: true,
-			extensions: [SoftDeleteHandler],
-			namingStrategy: EntityCaseNamingStrategy,
-      debug: getLoggingMikroOptions(process.env.DB_LOGGING || 'false'),
+      persistOnCreate: true,
+      extensions: [SoftDeleteHandler],
+      namingStrategy: EntityCaseNamingStrategy,
+      debug: getLoggingMikroOptions(defaultConfiguration.database.logging),
     };
   }
 
@@ -187,6 +205,17 @@ class DatabaseConfigService {
    *
    * @description 根据数据库类型返回相应的MikroORM配置
    * 支持PostgreSQL和MongoDB两种数据库类型
+   *
+   * ## 业务规则
+   * 
+   * ### 数据库类型支持
+   * - PostgreSQL: 关系型数据库，支持ACID事务
+   * - MongoDB: 文档型数据库，支持灵活的数据结构
+   * 
+   * ### 配置验证
+   * - 自动验证数据库类型
+   * - 提供默认配置值
+   * - 支持环境变量覆盖
    *
    * @returns {MikroOrmModuleOptions} MikroORM模块配置选项
    * @throws {Error} 当数据库类型不支持时抛出错误
@@ -199,10 +228,10 @@ class DatabaseConfigService {
    */
   public getConfig(): MikroOrmModuleOptions {
     switch (this.dbType) {
-      case DatabaseTypeEnum.postgres:
+      case DatabaseTypeEnum.POSTGRESQL:
         return this.getPostgresConfig();
 
-      case DatabaseTypeEnum.mongodb:
+      case DatabaseTypeEnum.MONGODB:
         return this.getMongoConfig();
 
       default:

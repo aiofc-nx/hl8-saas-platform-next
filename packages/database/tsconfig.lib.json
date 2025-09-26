@@ -18,6 +18,9 @@
     },
     {
       "path": "../logger/tsconfig.lib.json"
+    },
+    {
+      "path": "../config/tsconfig.lib.json"
     }
   ],
   "exclude": ["jest.config.ts", "src/**/*.spec.ts", "src/**/*.test.ts"]
