@@ -8,6 +8,15 @@
     },
     {
       "path": "./packages/config"
+    },
+    {
+      "path": "./packages/common"
+    },
+    {
+      "path": "./packages/utils"
+    },
+    {
+      "path": "./packages/database"
     }
   ]
 }

@@ -103,35 +103,35 @@ export class DefaultExceptionMessageProvider implements ExceptionMessageProvider
     // 通用错误消息
     INTERNAL_ERROR: {
       title: 'Internal Server Error',
-      detail: 'An unexpected error occurred while processing your request',
+      detail: '处理您的请求时发生意外错误',
     },
     BAD_REQUEST: {
       title: 'Bad Request',
-      detail: 'The request is invalid or malformed',
+      detail: '请求无效或格式错误',
     },
     UNAUTHORIZED: {
       title: 'Unauthorized',
-      detail: 'Authentication is required to access this resource',
+      detail: '访问此资源需要身份验证',
     },
     FORBIDDEN: {
       title: 'Forbidden',
-      detail: 'You do not have permission to access this resource',
+      detail: '您没有权限访问此资源',
     },
     NOT_FOUND: {
       title: 'Not Found',
-      detail: 'The requested resource was not found',
+      detail: '未找到请求的资源',
     },
     CONFLICT: {
       title: 'Conflict',
-      detail: 'The request conflicts with the current state of the resource',
+      detail: '请求与资源的当前状态冲突',
     },
     UNPROCESSABLE_ENTITY: {
       title: 'Unprocessable Entity',
-      detail: 'The request could not be processed due to validation errors',
+      detail: '由于验证错误，无法处理请求',
     },
     SERVICE_UNAVAILABLE: {
       title: 'Service Unavailable',
-      detail: 'The service is temporarily unavailable',
+      detail: '服务暂时不可用',
     },
   };
 

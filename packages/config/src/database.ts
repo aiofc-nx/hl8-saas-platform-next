@@ -9,12 +9,12 @@ import {
   MongoDriver,
   Options as MikroOrmMongoOptions,
 } from '@mikro-orm/mongodb';
-import { PinoLogger } from '../../logger/src/lib/pino-logger';
 import {
   DatabaseTypeEnum,
   getLoggingMikroOptions,
   getTlsOptions,
 } from './database-helpers.js';
+import { PinoLogger } from '@hl8/logger';
 
 /**
  * 数据库配置服务

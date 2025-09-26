@@ -17,6 +17,12 @@
     "strict": true,
     "target": "es2022",
     "customConditions": ["@hl8/source"],
-    
+    "baseUrl": ".",
+    "paths": {
+      "@hl8/common": ["packages/common/src/index.ts"],
+      "@hl8/config": ["packages/config/src/index.ts"],
+      "@hl8/logger": ["packages/logger/src/index.ts"],
+      "@hl8/utils": ["packages/utils/src/index.ts"]
+    }
   }
 }

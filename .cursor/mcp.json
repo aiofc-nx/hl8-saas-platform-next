@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "eslint": {
+      "command": "npx",
+      "args": [
+        "@eslint/mcp@latest"
+      ],
+      "env": {}
+    },
+    "nx-mcp": {
+      "command": "npx",
+      "args": ["nx-mcp@latest"]
+    }
+  }
+}

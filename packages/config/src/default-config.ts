@@ -3,6 +3,7 @@ dotenv.config();
 
 import * as path from 'path';
 import { dbMikroOrmConnectionConfig } from './database.js';
+import { PinoLogger } from '@hl8/logger';
 
 /**
  * 应用配置服务

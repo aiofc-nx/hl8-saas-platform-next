@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PinoLogger } from '../../../logger/src/lib/pino-logger';
 import { getConfig } from './config-loader.js';
+import { PinoLogger } from '@hl8/logger';
 
 /**
  * 配置服务
