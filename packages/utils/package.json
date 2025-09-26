@@ -1,0 +1,15 @@
+{
+  "name": "@hl8/utils",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "generate-password": "^1.7.1",
+    "tslib": "^2.3.0"
+  }
+}
