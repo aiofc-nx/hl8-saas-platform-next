@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { getConfig, validateCurrentConfig, validatePartialConfig, getValidationRules } from './config-loader.js';
 import { PinoLogger } from '@hl8/logger';
-import { ValidationResult, ValidationRules } from './validation/config-validation.service.js';
+import { MemoryConfigService } from './memory-config/memory-config.service.js';
+import { ConfigCompatibilityAdapter } from './memory-config/compatibility-adapter.js';
+import { ConfigValidationService, ValidationResult } from './validation/config-validation.service.js';
 
 /**
  * 配置健康状态接口
@@ -76,22 +77,19 @@ export class ConfigService {
     destination: { type: 'console' }
   });
 
-  /**
-   * 配置存储
-   * 
-   * @description 存储当前应用程序的完整配置信息
-   * 支持动态配置更新和缓存机制
-   */
-  private config: Record<string, unknown>;
+  // 不再需要存储配置对象，使用内存配置服务
 
   /**
    * 构造函数
    * 
-   * @description 初始化配置服务，加载配置并记录关键配置信息
+   * @description 初始化配置服务，使用内存配置服务
    * 在服务启动时自动执行配置加载和验证
    */
-  constructor() {
-    this.config = getConfig();
+  constructor(
+    private readonly memoryConfig: MemoryConfigService,
+    private readonly compatibilityAdapter: ConfigCompatibilityAdapter,
+    private readonly configValidationService: ConfigValidationService
+  ) {
     this.logConfiguration();
   }
 
@@ -111,9 +109,17 @@ export class ConfigService {
    */
   private logConfiguration(): void {
     this.logger.log('=== 配置服务初始化 ===');
-    this.logger.log(`API端口: ${this.get('api.port')}`);
-    this.logger.log(`数据库类型: ${this.get('database.type')}`);
-    this.logger.log(`日志级别: ${this.get('logging.level')}`);
+    try {
+      const apiConfig = this.memoryConfig.getApiConfig();
+      const dbConfig = this.memoryConfig.getDatabaseConfig();
+      const loggingConfig = this.memoryConfig.getLoggingConfig();
+      
+      this.logger.log(`API端口: ${apiConfig.port}`);
+      this.logger.log(`数据库类型: ${dbConfig.type}`);
+      this.logger.log(`日志级别: ${loggingConfig.level}`);
+    } catch (error) {
+      this.logger.warn('配置服务初始化时无法获取配置信息');
+    }
     this.logger.log('==================');
   }
 
@@ -151,47 +157,11 @@ export class ConfigService {
    * @since 1.0.0
    */
   get<T = unknown>(path: string): T {
-    return this.getNestedValue(this.config, path) as T;
+    // 使用兼容适配器获取配置值
+    return this.compatibilityAdapter.get<T>(path);
   }
 
-  /**
-   * 获取嵌套配置值
-   *
-   * @description 根据点号分隔的路径获取嵌套对象的值
-   * 使用递归方式遍历对象属性，支持深层嵌套访问
-   * 
-   * ## 算法说明
-   * - 将路径按点号分割为键数组
-   * - 使用 reduce 方法逐层访问对象属性
-   * - 支持类型检查和空值处理
-   * - 路径不存在时返回 undefined
-   * 
-   * @param {Record<string, unknown>} obj - 目标配置对象
-   * @param {string} path - 点号分隔的路径字符串
-   * @returns {unknown} 配置值，如果路径不存在则返回 undefined
-   * 
-   * @private
-   * 
-   * @example
-   * ```typescript
-   * const config = { api: { port: 3000 }, database: { host: 'localhost' } };
-   * 
-   * // 获取嵌套值
-   * const port = this.getNestedValue(config, 'api.port'); // 3000
-   * const host = this.getNestedValue(config, 'database.host'); // 'localhost'
-   * const invalid = this.getNestedValue(config, 'invalid.path'); // undefined
-   * ```
-   * 
-   * @since 1.0.0
-   */
-  private getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-    return path.split('.').reduce((current: unknown, key: string) => {
-      if (current && typeof current === 'object' && current !== null && key in current) {
-        return (current as Record<string, unknown>)[key];
-      }
-      return undefined;
-    }, obj);
-  }
+  // 不再需要getNestedValue方法，使用兼容适配器
 
   /**
    * 获取API配置
@@ -211,7 +181,7 @@ export class ConfigService {
    * @since 1.0.0
    */
   getApiConfig() {
-    return this.get('api');
+    return this.memoryConfig.getApiConfig();
   }
 
   /**
@@ -232,7 +202,7 @@ export class ConfigService {
    * @since 1.0.0
    */
   getDatabaseConfig() {
-    return this.get('database');
+    return this.memoryConfig.getDatabaseConfig();
   }
 
   /**
@@ -253,7 +223,7 @@ export class ConfigService {
    * @since 1.0.0
    */
   getAuthConfig() {
-    return this.get('auth');
+    return this.memoryConfig.getAuthConfig();
   }
 
   /**
@@ -274,7 +244,7 @@ export class ConfigService {
    * @since 1.0.0
    */
   getLoggingConfig() {
-    return this.get('logging');
+    return this.memoryConfig.getLoggingConfig();
   }
 
   /**
@@ -295,7 +265,7 @@ export class ConfigService {
    * @since 1.0.0
    */
   getFeaturesConfig() {
-    return this.get('features');
+    return this.memoryConfig.getFeaturesConfig();
   }
 
   /**
@@ -316,7 +286,7 @@ export class ConfigService {
    * @since 1.0.0
    */
   getAssetsConfig() {
-    return this.get('assets');
+    return this.memoryConfig.getAssetsConfig();
   }
 
   /**
@@ -381,7 +351,7 @@ export class ConfigService {
       nodeEnv: process.env.NODE_ENV || 'development',
       isDevelopment: process.env.NODE_ENV === 'development',
       isProduction: process.env.NODE_ENV === 'production',
-      isTest: process.env.NODE_ENV === 'test',
+      isTest: process.env.NODE_ENV === 'test'
     };
   }
 
@@ -408,7 +378,7 @@ export class ConfigService {
    * @since 1.0.0
    */
   getAll() {
-    return this.config;
+    return this.memoryConfig.getAllConfig();
   }
 
   /**
@@ -440,8 +410,8 @@ export class ConfigService {
    * 
    * @since 1.0.0
    */
-  async validateConfig(throwOnError: boolean = false): Promise<ValidationResult> {
-    return await validateCurrentConfig(throwOnError);
+  async validateConfig(throwOnError = false): Promise<ValidationResult> {
+    return await this.configValidationService.validateApplicationConfig(throwOnError);
   }
 
   /**
@@ -466,7 +436,7 @@ export class ConfigService {
    * @since 1.0.0
    */
   async validatePartialConfig(partialConfig: any, fields: string[]): Promise<ValidationResult> {
-    return await validatePartialConfig(partialConfig, fields);
+    return await this.configValidationService.validatePartialConfig(partialConfig, fields);
   }
 
   /**
@@ -485,8 +455,8 @@ export class ConfigService {
    * 
    * @since 1.0.0
    */
-  getValidationRules(): ValidationRules {
-    return getValidationRules();
+  getValidationRules() {
+    return this.configValidationService.getValidationRules();
   }
 
   /**
@@ -524,7 +494,7 @@ export class ConfigService {
       const validationResult = await this.validateConfig();
       if (!validationResult.isValid) {
         isHealthy = false;
-        validationResult.errors.forEach(error => {
+        validationResult.errors.forEach((error: any) => {
           issues.push(`${error.property}: ${Object.values(error.constraints).join(', ')}`);
         });
       }
@@ -576,5 +546,84 @@ export class ConfigService {
         configVersion: '1.0.0'
       };
     }
+  }
+
+  /**
+   * 获取MongoDB配置（内存配置）
+   * 
+   * @description 获取MongoDB相关的配置，使用内存配置
+   * @returns {MongoDbMemoryConfig} MongoDB配置
+   * 
+   * @since 1.0.0
+   */
+  getMongoDbConfig() {
+    return this.memoryConfig.getMongoDbConfig();
+  }
+
+  /**
+   * 获取Redis配置（内存配置）
+   * 
+   * @description 获取Redis相关的配置，使用内存配置
+   * @returns {RedisMemoryConfig} Redis配置
+   * 
+   * @since 1.0.0
+   */
+  getRedisConfig() {
+    return this.memoryConfig.getRedisConfig();
+  }
+
+  /**
+   * 获取所有配置（内存配置）
+   * 
+   * @description 获取完整的配置对象，使用内存配置
+   * @returns {ApplicationMemoryConfig} 完整配置
+   * 
+   * @example
+   * ```typescript
+   * const allConfig = configService.getAllConfig();
+   * console.log('配置摘要:', allConfig.getSummary());
+   * ```
+   * 
+   * @since 1.0.0
+   */
+  getAllConfig() {
+    return this.memoryConfig.getAllConfig();
+  }
+
+  /**
+   * 获取配置状态（内存配置）
+   * 
+   * @description 获取配置服务的状态信息
+   * @returns {ConfigStatus} 配置状态
+   * 
+   * @example
+   * ```typescript
+   * const status = configService.getConfigStatus();
+   * console.log('配置状态:', status);
+   * ```
+   * 
+   * @since 1.0.0
+   */
+  getConfigStatus() {
+    return this.memoryConfig.getConfigStatus();
+  }
+
+  /**
+   * 重新加载配置（内存配置）
+   * 
+   * @description 重新从环境变量加载配置到内存
+   * 
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * ```typescript
+   * await configService.reloadConfig();
+   * console.log('配置已重新加载');
+   * ```
+   * 
+   * @since 1.0.0
+   */
+  async reloadConfig(): Promise<void> {
+    return await this.memoryConfig.reloadConfig();
   }
 }

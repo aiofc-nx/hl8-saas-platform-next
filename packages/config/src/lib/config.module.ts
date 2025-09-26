@@ -1,7 +1,9 @@
 import { Global, Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { ConfigService } from './config.service.js';
-import configs from '../config/index.js';
+import { MemoryConfigService } from './memory-config/memory-config.service.js';
+import { ConfigCompatibilityAdapter } from './memory-config/compatibility-adapter.js';
+import { HybridConfigService } from './memory-config/hybrid-config.service.js';
+import { ConfigMonitorService } from './memory-config/config-monitor.service.js';
 
 /**
  * 配置模块
@@ -74,13 +76,21 @@ import configs from '../config/index.js';
 		 * - 支持动态配置加载
 		 * - 提供统一的配置访问接口
 		 */
-		NestConfigModule.forRoot({
-			isGlobal: true,
-			cache: true,
-			load: [...configs]
-		})
+		// 不再需要 @nestjs/config，使用内存配置服务
 	],
-	providers: [ConfigService],
-	exports: [ConfigService]
+	providers: [
+		ConfigService,
+		MemoryConfigService,
+		ConfigCompatibilityAdapter,
+		HybridConfigService,
+		ConfigMonitorService
+	],
+	exports: [
+		ConfigService,
+		MemoryConfigService,
+		ConfigCompatibilityAdapter,
+		HybridConfigService,
+		ConfigMonitorService
+	]
 })
 export class ConfigModule {}

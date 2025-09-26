@@ -4,7 +4,7 @@
 
 ## 文件结构
 
-```
+```text
 dto/
 ├── api-config.dto.ts           # API配置验证
 ├── database-config.dto.ts     # 数据库配置验证
