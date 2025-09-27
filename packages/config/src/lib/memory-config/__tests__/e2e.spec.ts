@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MemoryConfigService } from '../memory-config.service.js';
-import { ConfigCompatibilityAdapter } from '../compatibility-adapter.js';
-import { HybridConfigService } from '../hybrid-config.service.js';
-import { ConfigService } from '../../config.service.js';
-import { ConfigModule } from '../../config.module.js';
+import { MemoryConfigService } from '../memory-config.service';
+import { ConfigCompatibilityAdapter } from '../compatibility-adapter';
+import { HybridConfigService } from '../hybrid-config.service';
+import { ConfigService } from '../../config.service';
+import { ConfigModule } from '../../config.module';
 
 /**
  * 端到端测试
